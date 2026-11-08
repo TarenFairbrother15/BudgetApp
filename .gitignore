@@ -1,0 +1,45 @@
+# .gitignore for the budget app — ASP.NET Core + Rider + SQLite
+# Drop this in the repo root next to budget-app-spec.md, before the first commit.
+# It exists so no secret, token, spreadsheet ID, or local financial data
+# ever lands on GitHub (spec §2, §13: "No secret, token, or spreadsheet ID
+# is committed to the repo").
+
+## .NET build outputs
+bin/
+obj/
+out/
+*.dll
+*.exe
+*.pdb
+
+## Rider / JetBrains
+.idea/
+*.sln.iml
+
+## Visual Studio (if you ever open it there)
+.vs/
+*.user
+*.suo
+
+## Local database — contains your real budget data, never commit it
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+## Secrets and credentials — use dotnet user-secrets / env vars instead (spec §2)
+appsettings.Development.json
+appsettings.*.json
+!appsettings.json
+*.pfx
+credentials.json
+client_secret*.json
+token.json
+*.env
+.env
+secrets.json
+
+## OS / misc
+.DS_Store
+Thumbs.db

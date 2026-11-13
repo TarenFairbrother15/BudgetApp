@@ -1,5 +1,7 @@
 using BudgetApp.Components;
+using BudgetApp.Data;
 using BudgetApp.Endpoints;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,6 +9,9 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddOpenApi();
+
+builder.Services.AddDbContextFactory<BudgetDbContext>(options => 
+    options.UseSqlite(builder.Configuration.GetConnectionString("BudgetDb")));
 
 var app = builder.Build();
 

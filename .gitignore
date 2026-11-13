@@ -43,3 +43,6 @@ secrets.json
 ## OS / misc
 .DS_Store
 Thumbs.db
+
+# .NET artifacts output (see Directory.Build.props)
+artifacts/

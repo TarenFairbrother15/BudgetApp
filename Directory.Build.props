@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <!-- Put all build output in ./artifacts instead of bin/ and obj/ inside each project. -->
+    <UseArtifactsOutput>true</UseArtifactsOutput>
+  </PropertyGroup>
+</Project>

@@ -17,6 +17,7 @@
       <IncludeAssets>runtime; build; native; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.15" />
+    <PackageReference Include="MudBlazor" Version="9.13.0" />
   </ItemGroup>
 
 </Project>

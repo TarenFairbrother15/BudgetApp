@@ -1,0 +1,88 @@
+﻿@page "/import"
+@using BudgetApp.Interfaces
+@implements IDisposable
+@inject IGoogleSheetsService SheetsService
+
+<PageTitle>Import</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-1">Import transactions</MudText>
+<MudText Typo="Typo.body2" Class="mud-text-secondary mb-6">
+    Pull a month's transactions from Google Sheets. Rows already stored are skipped.
+</MudText>
+
+<MudPaper Class="pa-5 mb-4" Elevation="2" Style="max-width: 520px">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+        <MudDatePicker @bind-Date="selectedMonth" OpenTo="OpenTo.Month" FixDay="1" DateFormat="MMMM yyyy"
+                       Label="Month" Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="isImporting" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ImportAsync"
+                   Disabled="@(isImporting || selectedMonth is null)" Style="white-space: nowrap">
+            @if (isImporting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                <span role="status">Importing…</span>
+            }
+            else
+            {
+                <MudIcon Icon="@Icons.Material.Filled.CloudDownload" Class="mr-2" />
+                <span>Import</span>
+            }
+        </MudButton>
+    </MudStack>
+</MudPaper>
+
+@if (transactionCount is not null)
+{
+    <MudAlert Severity="Severity.Success" Style="max-width: 520px">
+        <strong>@transactionCount</strong> new transactions stored for @importedMonth.ToString("MMMM yyyy").
+        <MudLink Href="" Class="ml-1">View dashboard</MudLink>
+    </MudAlert>
+}
+else if (error is not null)
+{
+    <MudAlert Severity="Severity.Error" Style="max-width: 520px; white-space: pre-wrap">@error</MudAlert>
+}
+
+@code {
+    private DateTime? selectedMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private DateTime importedMonth;
+    private bool isImporting;
+    private int? transactionCount;
+    private string? error;
+
+    // Cancels an in-progress import if the user leaves the page.
+    private readonly CancellationTokenSource disposalCts = new();
+
+    private async Task ImportAsync()
+    {
+        if (selectedMonth is null) return;
+
+        isImporting = true;
+        transactionCount = null;
+        error = null;
+
+        try
+        {
+            importedMonth = selectedMonth.Value;
+            transactionCount = await SheetsService.ImportTransactionsAsync(
+                importedMonth.Year, importedMonth.Month, disposalCts.Token);
+        }
+        catch (OperationCanceledException) when (disposalCts.IsCancellationRequested)
+        {
+            // Page was closed mid-import; nothing to show.
+        }
+        catch (Exception ex)
+        {
+            error = $"Import failed: {ex.Message}";
+        }
+        finally
+        {
+            isImporting = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        disposalCts.Cancel();
+        disposalCts.Dispose();
+    }
+}

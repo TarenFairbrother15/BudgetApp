@@ -1,0 +1,215 @@
+@page "/"
+@using BudgetApp.Data.Interfaces
+@using BudgetApp.Models
+@implements IDisposable
+@inject ITransactionDataService TransactionData
+
+<PageTitle>Dashboard</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Wrap="Wrap.Wrap" Class="mb-6">
+    <div>
+        <MudText Typo="Typo.overline" Class="mud-text-secondary">Dashboard</MudText>
+        <MudText Typo="Typo.h4">@selectedMonth.ToString("MMMM yyyy")</MudText>
+    </div>
+
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+        <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" OnClick="() => ChangeMonthAsync(-1)" aria-label="Previous month" />
+        <MudDatePicker Date="selectedMonth" DateChanged="OnPickedAsync" OpenTo="OpenTo.Month" FixDay="1"
+                       DateFormat="MMMM yyyy" Label="Month" Variant="Variant.Outlined" Margin="Margin.Dense"
+                       Style="width: 190px" />
+        <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" OnClick="() => ChangeMonthAsync(1)" aria-label="Next month" />
+        @if (!IsCurrentMonth)
+        {
+            <MudButton Variant="Variant.Text" OnClick="GoToCurrentMonthAsync">This month</MudButton>
+        }
+    </MudStack>
+</MudStack>
+
+@if (error is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">@error</MudAlert>
+}
+
+@if (summary is null)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else if (summary.TransactionCount == 0)
+{
+    <MudPaper Class="pa-10" Elevation="0" Outlined="true">
+        <MudStack AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Outlined.Inbox" Size="Size.Large" Class="mud-text-secondary" />
+            <MudText Typo="Typo.h6">No transactions for @selectedMonth.ToString("MMMM yyyy")</MudText>
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">Import this month from Google Sheets to see it here.</MudText>
+            <MudButton Href="import" Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.CloudDownload">Go to import</MudButton>
+        </MudStack>
+    </MudPaper>
+}
+else
+{
+    <MudGrid Spacing="4">
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-5" Elevation="2" Style="@CardAccent(Color.Success)">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                    <MudText Typo="Typo.subtitle2" Class="mud-text-secondary">Income</MudText>
+                    <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Color="Color.Success" />
+                </MudStack>
+                <MudText Typo="Typo.h4" Class="mt-2">@Money(summary.Income)</MudText>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-5" Elevation="2" Style="@CardAccent(Color.Error)">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                    <MudText Typo="Typo.subtitle2" Class="mud-text-secondary">Expenses</MudText>
+                    <MudIcon Icon="@Icons.Material.Filled.TrendingDown" Color="Color.Error" />
+                </MudStack>
+                <MudText Typo="Typo.h4" Class="mt-2">@Money(summary.Expenses)</MudText>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-5" Elevation="2" Style="@CardAccent(Color.Info)">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                    <MudText Typo="Typo.subtitle2" Class="mud-text-secondary">Saved</MudText>
+                    <MudIcon Icon="@Icons.Material.Filled.Savings" Color="Color.Info" />
+                </MudStack>
+                <MudText Typo="Typo.h4" Class="mt-2">@Money(summary.Saved)</MudText>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-5" Elevation="2" Style="@CardAccent(NetColor)">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                    <MudText Typo="Typo.subtitle2" Class="mud-text-secondary">Net</MudText>
+                    <MudIcon Icon="@Icons.Material.Filled.AccountBalanceWallet" Color="NetColor" />
+                </MudStack>
+                <MudText Typo="Typo.h4" Class="mt-2" Color="NetColor">@Money(summary.Net)</MudText>
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                    @(summary.Net >= 0 ? "left over this month" : "more spent than earned")
+                </MudText>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="5">
+            <MudPaper Class="pa-5" Elevation="2" Style="height: 100%">
+                <MudText Typo="Typo.h6" Class="mb-4">Spending by category</MudText>
+                @if (chartValues.Length > 0)
+                {
+                    <MudChart T="double" ChartType="ChartType.Donut" ChartSeries="@chartSeries" ChartLabels="@chartLabels"
+                              LegendPosition="Position.Bottom" Width="100%" Height="300px" />
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">No net spending to chart.</MudText>
+                }
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="7">
+            <MudPaper Class="pa-5" Elevation="2" Style="height: 100%">
+                <MudText Typo="Typo.h6" Class="mb-2">Category breakdown</MudText>
+                <MudSimpleTable Dense="true" Hover="true" Elevation="0">
+                    <thead>
+                        <tr>
+                            <th>Category</th>
+                            <th style="text-align: right">Spent</th>
+                            <th style="width: 40%">Share of expenses</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var category in summary.ExpenseCategories)
+                        {
+                            var share = Share(category.Total);
+                            <tr>
+                                <td>@category.Category</td>
+                                <td style="text-align: right; white-space: nowrap">
+                                    <MudText Typo="Typo.body2" Color="@(category.Total < 0 ? Color.Success : Color.Default)">
+                                        @Money(category.Total)
+                                    </MudText>
+                                </td>
+                                <td>
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                        <MudProgressLinear Value="share" Color="Color.Primary" Rounded="true" Size="Size.Medium" Style="flex: 1" />
+                                        <MudText Typo="Typo.caption" Style="width: 3rem; text-align: right">@share.ToString("0")%</MudText>
+                                    </MudStack>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    private DateTime selectedMonth = FirstOfMonth(DateTime.Today);
+    private MonthSummary? summary;
+    private string? error;
+
+    private List<ChartSeries<double>> chartSeries = [];
+    private double[] chartValues = [];
+    private string[] chartLabels = [];
+
+    private readonly CancellationTokenSource disposalCts = new();
+
+    private bool IsCurrentMonth => selectedMonth == FirstOfMonth(DateTime.Today);
+    private Color NetColor => summary?.Net >= 0 ? Color.Success : Color.Error;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private Task ChangeMonthAsync(int months) => SelectMonthAsync(selectedMonth.AddMonths(months));
+    private Task GoToCurrentMonthAsync() => SelectMonthAsync(DateTime.Today);
+    private Task OnPickedAsync(DateTime? date) => date is null ? Task.CompletedTask : SelectMonthAsync(date.Value);
+
+    private async Task SelectMonthAsync(DateTime date)
+    {
+        selectedMonth = FirstOfMonth(date);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        summary = null;
+        error = null;
+
+        try
+        {
+            summary = await TransactionData.GetMonthSummaryAsync(
+                selectedMonth.Year, selectedMonth.Month, disposalCts.Token);
+
+            // A donut can't draw zero or negative slices, so categories that netted out
+            // (refunds at or above spend) stay in the table but are left off the chart.
+            var charted = summary.ExpenseCategories.Where(c => c.Total > 0).ToList();
+            chartValues = charted.Select(c => (double)c.Total).ToArray();
+            chartLabels = charted.Select(c => c.Category).ToArray();
+            chartSeries = chartValues.AsChartDataSet();
+        }
+        catch (OperationCanceledException) when (disposalCts.IsCancellationRequested)
+        {
+            // Page closed mid-load.
+        }
+        catch (Exception ex)
+        {
+            error = $"Couldn't load the dashboard: {ex.Message}";
+        }
+    }
+
+    private double Share(decimal total) =>
+        summary is { Expenses: > 0 } && total > 0 ? (double)(total / summary.Expenses * 100) : 0;
+
+    private static string Money(decimal amount) => amount.ToString("C");
+
+    private static string CardAccent(Color color) =>
+        $"border-left: 4px solid var(--mud-palette-{color.ToString().ToLowerInvariant()})";
+
+    private static DateTime FirstOfMonth(DateTime date) => new(date.Year, date.Month, 1);
+
+    public void Dispose()
+    {
+        disposalCts.Cancel();
+        disposalCts.Dispose();
+    }
+}

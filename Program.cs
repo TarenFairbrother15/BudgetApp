@@ -5,6 +5,7 @@ using BudgetApp.Data.Services;
 using BudgetApp.Endpoints;
 using BudgetApp.Interfaces;
 using BudgetApp.Services;
+using MudBlazor.Services;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -12,6 +13,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+builder.Services.AddMudServices();
 builder.Services.AddOpenApi();
 
 builder.Services.AddDbContextFactory<BudgetDbContext>(options => 

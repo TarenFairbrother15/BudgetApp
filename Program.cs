@@ -1,6 +1,8 @@
 using BudgetApp.Components;
 using BudgetApp.Data;
 using BudgetApp.Endpoints;
+using BudgetApp.Interfaces;
+using BudgetApp.Services;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -12,6 +14,11 @@ builder.Services.AddOpenApi();
 
 builder.Services.AddDbContextFactory<BudgetDbContext>(options => 
     options.UseSqlite(builder.Configuration.GetConnectionString("BudgetDb")));
+
+builder.Services.AddSingleton<IGoogleSheetsService, GoogleSheetsService>();
+
+// Lets Blazor components call this app's own /api endpoints.
+builder.Services.AddHttpClient();
 
 var app = builder.Build();
 

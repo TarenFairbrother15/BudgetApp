@@ -1,5 +1,7 @@
 using BudgetApp.Components;
 using BudgetApp.Data;
+using BudgetApp.Data.Interfaces;
+using BudgetApp.Data.Services;
 using BudgetApp.Endpoints;
 using BudgetApp.Interfaces;
 using BudgetApp.Services;
@@ -16,6 +18,7 @@ builder.Services.AddDbContextFactory<BudgetDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("BudgetDb")));
 
 builder.Services.AddSingleton<IGoogleSheetsService, GoogleSheetsService>();
+builder.Services.AddSingleton<ITransactionDataService, TransactionDataService>();
 
 var app = builder.Build();
 

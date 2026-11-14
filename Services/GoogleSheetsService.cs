@@ -1,4 +1,5 @@
 ﻿using System.Globalization;
+using BudgetApp.Data.Interfaces;
 using BudgetApp.Interfaces;
 using BudgetApp.Models;
 using Google.Apis.Auth.OAuth2;
@@ -26,11 +27,13 @@ public class GoogleSheetsService : IGoogleSheetsService
 
     private readonly IConfiguration config;
     private readonly ILogger<GoogleSheetsService> logger;
+    private readonly ITransactionDataService transactionDataService;
 
-    public GoogleSheetsService(IConfiguration config, ILogger<GoogleSheetsService> logger)
+    public GoogleSheetsService(IConfiguration config, ILogger<GoogleSheetsService> logger, ITransactionDataService transactionDataService)
     {
         this.config = config;
         this.logger = logger;
+        this.transactionDataService = transactionDataService;
     }
 
 
@@ -57,8 +60,11 @@ public class GoogleSheetsService : IGoogleSheetsService
 
         var monthKey = $"{year}-{month:D2}";
         var transactions = ParseRows(response.Values, monthKey);
+        
+        var newTransactionsCount = 
+            await this.transactionDataService.StoreTransactionsAsync(transactions, cancellationToken);
 
-        return transactions.Count;
+        return newTransactionsCount;
     }
 
     private static BaseClientService.Initializer CreateInitializer(UserCredential credential) => new()

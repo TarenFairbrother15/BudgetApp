@@ -17,9 +17,6 @@ builder.Services.AddDbContextFactory<BudgetDbContext>(options =>
 
 builder.Services.AddSingleton<IGoogleSheetsService, GoogleSheetsService>();
 
-// Lets Blazor components call this app's own /api endpoints.
-builder.Services.AddHttpClient();
-
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

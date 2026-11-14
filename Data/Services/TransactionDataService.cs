@@ -21,12 +21,12 @@ public class TransactionDataService : ITransactionDataService
         var dates = transactions.Select(t => t.Date).Distinct().ToList();
 
         var existingKeys = (await db.Transactions.Where(t => dates.Contains(t.Date))
-                .Select(t => new { t.Date, t.Amount, t.Account })
+                .Select(t => new { t.Date, t.Amount, t.Account, t.EntryType })
                 .ToListAsync(cancellationToken))
-            .Select(t => (t.Date, t.Amount, t.Account)).ToHashSet();
-        
+            .Select(t => (t.Date, t.Amount, t.Account, t.EntryType)).ToHashSet();
+
         var newTransactions = transactions
-            .Where(t => !existingKeys.Contains((t.Date, t.Amount, t.Account)))
+            .Where(t => !existingKeys.Contains((t.Date, t.Amount, t.Account, t.EntryType)))
             .ToList();
         
         db.Transactions.AddRange(newTransactions);

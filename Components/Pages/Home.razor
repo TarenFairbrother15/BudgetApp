@@ -1,7 +1,85 @@
 ﻿@page "/"
+@rendermode InteractiveServer
+@using BudgetApp.Endpoints
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager Navigation
 
 <PageTitle>Home</PageTitle>
 
-<h1>Hello, world!</h1>
+<h1>Budget App</h1>
 
-Welcome to your new app.
+<div class="d-flex align-items-end gap-2 my-3">
+    <div>
+        <label class="form-label" for="month">Month</label>
+        <input id="month" type="month" class="form-control" @bind="selectedMonth" disabled="@isImporting" />
+    </div>
+    <button class="btn btn-primary" @onclick="ImportAsync" disabled="@isImporting">
+        @if (isImporting)
+        {
+            <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+            <span role="status">Importing…</span>
+        }
+        else
+        {
+            <span>Import transactions</span>
+        }
+    </button>
+</div>
+
+@if (result is not null)
+{
+    <div class="alert alert-success">
+        <strong>@result.TransactionCount</strong> transactions returned for
+        @(new DateTime(result.Year, result.Month, 1).ToString("MMMM yyyy")).
+    </div>
+}
+else if (error is not null)
+{
+    <div class="alert alert-danger" style="white-space: pre-wrap">@error</div>
+}
+
+@code {
+    private DateTime selectedMonth = new(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private bool isImporting;
+    private ImportResult? result;
+    private string? error;
+
+    private async Task ImportAsync()
+    {
+        isImporting = true;
+        result = null;
+        error = null;
+
+        try
+        {
+            var client = HttpClientFactory.CreateClient();
+            client.BaseAddress = new Uri(Navigation.BaseUri);
+            // The first call waits for the Google sign-in, which can take longer than the 100s default.
+            client.Timeout = TimeSpan.FromMinutes(5);
+
+            var response = await client.PostAsync($"api/import/{selectedMonth.Year}/{selectedMonth.Month}", null);
+
+            if (response.IsSuccessStatusCode)
+            {
+                result = await response.Content.ReadFromJsonAsync<ImportResult>();
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                error = $"Import failed ({(int)response.StatusCode} {response.ReasonPhrase}).\n{FirstLines(body, 5)}";
+            }
+        }
+        catch (Exception ex)
+        {
+            error = $"Import failed: {ex.Message}";
+        }
+        finally
+        {
+            isImporting = false;
+        }
+    }
+
+    // The developer exception page returns a long body; the first lines carry the actual error.
+    private static string FirstLines(string text, int count) =>
+        string.Join('\n', text.Split('\n').Take(count));
+}
